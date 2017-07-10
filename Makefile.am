@@ -47,6 +47,10 @@ EXTRA_DIST = 			\
 	ChangeLog.pre-2-23	\
 	ChangeLog.README	\
 	HACKING			\
+	meson.build		\
+	meson_options.txt	\
+	meson_post_install.py	\
+	po/meson.build		\
 	$(NULL)
 
 CLEANFILES = \

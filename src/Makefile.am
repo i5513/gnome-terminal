@@ -429,6 +429,7 @@ EXTRA_DIST = \
 	preferences.ui \
 	profile-preferences.ui \
 	terminal.common.css \
+	meson.build \
 	$(about_DATA) \
 	$(uimanager_DATA) \
 	$(builder_DATA) \

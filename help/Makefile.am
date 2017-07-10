@@ -46,4 +46,6 @@ HELP_FILES = \
 
 HELP_LINGUAS = ca cs de el es fi fr gl hu ko pt_BR ru sv
 
+EXTRA_DIST = meson.build
+
 -include $(top_srcdir)/git.mk
