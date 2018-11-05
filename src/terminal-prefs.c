@@ -892,6 +892,29 @@ terminal_prefs_show_preferences (GSettings *profile, const char *widget_name)
 
   profile_prefs_init ();
 
+  /* Move action widgets to titlebar when headerbar is used */
+  if (terminal_app_get_use_headerbar (app)) {
+    GtkWidget *headerbar;
+    GtkWidget *bbox;
+
+    headerbar = g_object_new (GTK_TYPE_HEADER_BAR,
+                              "show-close-button", TRUE,
+                              NULL);
+    bbox = gtk_widget_get_parent (help_button);
+
+    gtk_container_remove (GTK_CONTAINER (bbox), g_object_ref (help_button));
+    gtk_header_bar_pack_start (GTK_HEADER_BAR (headerbar), help_button);
+    g_object_unref (help_button);
+
+    gtk_style_context_add_class (gtk_widget_get_style_context (help_button),
+                                 "text-button");
+
+    gtk_widget_show (headerbar);
+    gtk_widget_hide (bbox);
+
+    gtk_window_set_titlebar (GTK_WINDOW (dialog), headerbar);
+  }
+
   /* misc */
 
   g_signal_connect (close_button, "clicked", G_CALLBACK (prefs_dialog_close_button_clicked_cb), data);
