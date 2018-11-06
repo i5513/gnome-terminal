@@ -908,6 +908,26 @@ done:
     g_signal_emit_by_name (row, "activate");
   }
 
+  /* Move action widgets to titlebar when headerbar is used */
+  if (terminal_app_get_use_headerbar (app)) {
+    GtkWidget *headerbar;
+    GtkWidget *bbox;
+
+    headerbar = g_object_new (GTK_TYPE_HEADER_BAR,
+                              "show-close-button", TRUE,
+                              NULL);
+    bbox = gtk_widget_get_parent (close_button);
+
+    gtk_container_remove (GTK_CONTAINER (bbox), g_object_ref (help_button));
+    gtk_header_bar_pack_start (GTK_HEADER_BAR (headerbar), help_button);
+    g_object_unref (help_button);
+
+    gtk_widget_show (headerbar);
+    gtk_widget_hide (bbox);
+
+    gtk_window_set_titlebar (GTK_WINDOW (dialog), headerbar);
+  }
+
   terminal_util_dialog_focus_widget (the_pref_data->builder, widget_name);
 
   gtk_window_present (GTK_WINDOW (the_pref_data->dialog));
