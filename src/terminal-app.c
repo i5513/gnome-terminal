@@ -108,6 +108,12 @@ struct _TerminalApp
   GMenu *menubar_new_terminal_section;
   GMenu *menubar_set_profile_section;
   GMenu *menubar_set_encoding_submenu;
+
+  GMenuModel *headermenu;
+  GMenu *headermenu_new_terminal_section;
+  GMenu *headermenu_set_profile_section;
+  GMenu *headermenu_set_encoding_submenu;
+
   GMenu *set_profile_menu;
 
   GtkClipboard *clipboard;
@@ -467,8 +473,6 @@ set_profile_submenu_new (ProfileData *data,
 static void
 terminal_app_update_profile_menus (TerminalApp *app)
 {
-  g_menu_remove_all (G_MENU (app->menubar_new_terminal_section));
-  g_menu_remove_all (G_MENU (app->menubar_set_profile_section));
   g_clear_object (&app->set_profile_menu);
 
   /* Get profiles list and sort by label */
@@ -485,14 +489,81 @@ terminal_app_update_profile_menus (TerminalApp *app)
   ProfileData *profiles = (ProfileData*) array->data;
   guint n_profiles = array->len;
 
-  fill_new_terminal_section (app, app->menubar_new_terminal_section, profiles, n_profiles);
-
   app->set_profile_menu = set_profile_submenu_new (profiles, n_profiles);
 
-  if (app->set_profile_menu != NULL) {
-    g_menu_append_submenu (app->menubar_set_profile_section, _("Change _Profile"),
-                           G_MENU_MODEL (app->set_profile_menu));
+  if (app->menubar != NULL) {
+    g_menu_remove_all (G_MENU (app->menubar_new_terminal_section));
+    fill_new_terminal_section (app, app->menubar_new_terminal_section, profiles, n_profiles);
+
+    g_menu_remove_all (G_MENU (app->menubar_set_profile_section));
+    if (app->set_profile_menu != NULL) {
+      g_menu_append_submenu (app->menubar_set_profile_section, _("Change _Profile"),
+                             G_MENU_MODEL (app->set_profile_menu));
+    }
   }
+
+  if (app->headermenu != NULL) {
+    g_menu_remove_all (G_MENU (app->headermenu_new_terminal_section));
+    fill_new_terminal_section (app, app->headermenu_new_terminal_section, profiles, n_profiles);
+#if 0
+    g_menu_remove_all (G_MENU (app->headermenu_set_profile_section));
+    if (app->set_profile_menu != NULL) {
+      g_menu_append_submenu (app->headermenu_set_profile_section, _("Change _Profile"),
+                             G_MENU_MODEL (app->set_profile_menu));
+    }
+#endif
+  }
+}
+
+static GMenuModel *
+terminal_app_create_menubar (TerminalApp *app,
+                             gboolean shell_shows_menubar)
+{
+  /* If the menubar is shown by the shell, omit mnemonics for the submenus. This is because Alt+F etc.
+   * are more important to be usable in the terminal, the menu cannot be replaced runtime (to toggle
+   * between mnemonic and non-mnemonic versions), gtk-enable-mnemonics or gtk_window_set_mnemonic_modifier()
+   * don't effect the menubar either, so there wouldn't be a way to disable Alt+F for File etc. otherwise.
+   * Furthermore, the menu would even grab mnemonics from the File and Preferences windows.
+   * In Unity, Alt+F10 opens the menubar, this should be good enough for keyboard navigation.
+   * If the menubar is shown by the app, toggling mnemonics is handled in terminal-window.c using
+   * gtk_window_set_mnemonic_modifier().
+   * See bug 792978 for details. */
+  terminal_util_load_objects_resource (shell_shows_menubar ? "/org/gnome/terminal/ui/menubar-without-mnemonics.ui"
+                                                           : "/org/gnome/terminal/ui/menubar-with-mnemonics.ui",
+                                       "menubar", &app->menubar,
+                                       "new-terminal-section", &app->menubar_new_terminal_section,
+                                       "set-profile-section", &app->menubar_set_profile_section,
+                                       "set-encoding-submenu", &app->menubar_set_encoding_submenu,
+                                       NULL);
+
+  /* Install the encodings submenu */
+  terminal_encodings_append_menu (app->menubar_set_encoding_submenu);
+
+  /* Install profile sections */
+  terminal_app_update_profile_menus (app);
+
+  return app->menubar;
+}
+
+static void
+terminal_app_create_headermenu (TerminalApp *app)
+{
+  terminal_util_load_objects_resource ("/org/gnome/terminal/ui/headerbar-menu.ui",
+                                       "headermenu", &app->headermenu,
+                                       "new-terminal-section", &app->headermenu_new_terminal_section,
+#if 0
+                                       "set-profile-section", &app->headermenu_set_profile_section,
+                                       "set-encoding-submenu", &app->headermenu_set_encoding_submenu,
+#endif
+                                       NULL);
+
+#if 0
+  /* Install the encodings submenu */
+  terminal_encodings_append_menu (app->headermenu_set_encoding_submenu);
+#endif
+
+  /* Install profile sections */
+  terminal_app_update_profile_menus (app);
 }
 
 /* Clipboard */
@@ -645,35 +716,17 @@ terminal_app_startup (GApplication *application)
                 "gtk-shell-shows-menubar", &shell_shows_menubar,
                 NULL);
 
-  /* Menubar */
-  /* If the menubar is shown by the shell, omit mnemonics for the submenus. This is because Alt+F etc.
-   * are more important to be usable in the terminal, the menu cannot be replaced runtime (to toggle
-   * between mnemonic and non-mnemonic versions), gtk-enable-mnemonics or gtk_window_set_mnemonic_modifier()
-   * don't effect the menubar either, so there wouldn't be a way to disable Alt+F for File etc. otherwise.
-   * Furthermore, the menu would even grab mnemonics from the File and Preferences windows.
-   * In Unity, Alt+F10 opens the menubar, this should be good enough for keyboard navigation.
-   * If the menubar is shown by the app, toggling mnemonics is handled in terminal-window.c using
-   * gtk_window_set_mnemonic_modifier().
-   * See bug 792978 for details. */
-  terminal_util_load_objects_resource (shell_shows_menubar ? "/org/gnome/terminal/ui/menubar-without-mnemonics.ui"
-                                                           : "/org/gnome/terminal/ui/menubar-with-mnemonics.ui",
-                                       "menubar", &app->menubar,
-                                       "new-terminal-section", &app->menubar_new_terminal_section,
-                                       "set-profile-section", &app->menubar_set_profile_section,
-                                       "set-encoding-submenu", &app->menubar_set_encoding_submenu,
-                                       NULL);
+  /* Create menubar */
+  terminal_app_create_menubar (app, shell_shows_menubar);
 
-  /* Create dynamic menus and keep them updated */
-  terminal_app_update_profile_menus (app);
+  /* Keep dynamic menus updated */
   g_signal_connect_swapped (app->profiles_list, "children-changed",
                             G_CALLBACK (terminal_app_update_profile_menus), app);
 
-  /* Install the encodings submenu */
-  terminal_encodings_append_menu (app->menubar_set_encoding_submenu);
-
   /* Show/hide the menubar as appropriate: If the shell wants to show the menubar, make it available. */
   if (shell_shows_menubar)
-    gtk_application_set_menubar (GTK_APPLICATION (app), app->menubar);
+    gtk_application_set_menubar (GTK_APPLICATION (app),
+                                 terminal_app_get_menubar (app));
 
   _terminal_debug_print (TERMINAL_DEBUG_SERVER, "Startup complete\n");
 }
@@ -760,6 +813,10 @@ terminal_app_finalize (GObject *object)
   g_clear_object (&app->menubar_new_terminal_section);
   g_clear_object (&app->menubar_set_profile_section);
   g_clear_object (&app->menubar_set_encoding_submenu);
+  g_clear_object (&app->headermenu);
+  g_clear_object (&app->headermenu_new_terminal_section);
+  g_clear_object (&app->headermenu_set_profile_section);
+  g_clear_object (&app->headermenu_set_encoding_submenu);
   g_clear_object (&app->set_profile_menu);
 
   terminal_accels_shutdown ();
@@ -1071,6 +1128,21 @@ GMenuModel *
 terminal_app_get_menubar (TerminalApp *app)
 {
   return app->menubar;
+}
+
+/**
+ * terminal_app_get_headermenu:
+ * @app: a #TerminalApp
+ *
+ * Returns: (tranfer none): the main window headerbar menu bar as a #GMenuModel
+ */
+GMenuModel *
+terminal_app_get_headermenu (TerminalApp *app)
+{
+  if (app->headermenu == NULL)
+    terminal_app_create_headermenu (app);
+
+  return app->headermenu;
 }
 
 /**
