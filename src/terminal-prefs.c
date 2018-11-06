@@ -909,7 +909,7 @@ done:
   }
 
   /* Move action widgets to titlebar when headerbar is used */
-  if (terminal_app_get_use_headerbar (app)) {
+  if (terminal_app_get_dialog_use_headerbar (app)) {
     GtkWidget *headerbar;
     GtkWidget *bbox;
 
