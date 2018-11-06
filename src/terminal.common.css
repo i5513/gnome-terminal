@@ -7,3 +7,9 @@ terminal-window scrolledwindow overshoot.bottom
 {
   background: none;
 }
+
+popover button.model
+{
+  padding-left: 16px;
+  padding-right: 16px;
+}
